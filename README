@@ -116,7 +116,7 @@ Wayland-IM, just implementing Cim will enable typing in Gtk, Qt, X and
 Wayland applications.
 
 Assuming that you develop a new input tool(IME), it means that people can use
-your input tool(IME) in all environments, such as Gtk, Qt, XIM, Wayland, and
+your input tool(IME) in all environments, such as Gtk, Qt, X, Wayland, and
 console environments, just by implementing Cim.
 
 
