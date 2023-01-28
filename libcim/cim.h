@@ -1,13 +1,13 @@
 /* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 2; tab-width: 2 -*- */
 /*
  * cim.h
- * This file is part of CIM.
+ * This file is part of Cim.
  *
- * Copyright (C) 2023 by Hodong Kim <hodong@nimfsoft.art>
+ * Copyright (C) 2023 Hodong Kim <hodong@nimfsoft.art>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted.
-
+ *
  * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
  * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
  * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
@@ -22,7 +22,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -163,8 +163,10 @@ void   cim_ic_set_callback   (CimIc* ic,
                               void* user_data);
 const CimPreedit*   cim_ic_get_preedit   (CimIc* ic);
 const CimCandidate* cim_ic_get_candidate (CimIc* ic);
+/* utility functions */
+char* cim_get_cim_so_path ();
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 }
 #endif
 

@@ -1,6 +1,6 @@
-include ./config.mk
+include ../config.mk
 
-SUBDIRS = libcim inputs
+SUBDIRS = gtk qt5 $(ENABLE_GTK4) $(ENABLE_QT6)
 
 all:
 	for subdir in $(SUBDIRS); do \
@@ -21,4 +21,3 @@ clean:
 	for subdir in $(SUBDIRS); do \
 	  $(MAKE) clean -C $$subdir || exit 1; \
 	done
-	rm -f config.mk

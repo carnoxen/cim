@@ -1,66 +1,13 @@
-I was criticized a lot when I was doing an open source project. And, there are
-already signs of being criticized. There is absolutely nothing to benefit me
-from developing this. Time is money, so it's natural to lose money and time. In
-other words, there is no reason for me to develop while being criticized.
-
-The reason some people swear at me is not because of the quality of my
-software. In the past, I cursed open source and said I would never do an open
-source project, but now I started an open source project again. That's why some
-people hate and swear at me.
-
-Why am I trying to develop this?
-I'm not doing it because I want to do an open source project.
-It has nothing to do with the open source spirit. It's just because of the
-standardization work.
-
-But I won't do an open source project because some people don't want to. I will
-just develop it personally and publish it on my personal homepage under the
-0BSD license. What I do has nothing to do with the open source spirit. And, as
-strange as it may sound, this is not an open source project.
-
-The reason for providing it under the 0BSD license is to ensure that there is
-no inconvenience in using the API.
-
-Thank you.
-
--------------------------------------------------------------------------------
-
-[Korean version]
-
-제가 예전에 오픈소스 프로젝트를 하면서 욕 많이 먹었습니다. 그리고 벌써부터
-욕먹을 조짐이 보입니다. 이것을 개발함으로써 저에게 이득이 되는 것은 전혀
-없습니다. 시간은 곧 돈이기 때문에 시간적으로 금전적으로 손해보는 것은
-당연하고요. 즉, 제가 욕먹으면서 개발할 이유가 없다는 것이죠.
-
-일부 사람들이 저를 향해 욕하는 이유는 소프트웨어 품질 때문이 아닙니다. 과거에,
-제가 오픈소스를 욕하면서 오픈소스 프로젝트를 영원히 하지 않겠다고 했는데, 제가
-지금 다시 오픈소스 프로젝트를 시작했습니다. 그래서 일부 사람들이 저를 싫어하고
-욕하는 것입니다.
-
-저는 왜 이걸 개발하려고 할까요?
-오픈소스 프로젝트를 하고 싶어서 하는 것이 아닙니다.
-오픈소스 정신과도 무관합니다. 단지 표준화 작업 때문입니다.
-그러나 일부 사람들이 원치 않으니 오픈소스 프로젝트를 하지 않겠습니다. 그냥
-개인적으로 개발해서 0BSD 라이선스로 개인 홈페이지에 공개하겠습니다. 제가 하는
-일은 오픈소스 정신이랑은 무관합니다. 그리고 말이 좀 이상하게 들리겠지만 이것은
-오픈소스 프로젝트가 아닙니다.
-
-0BSD 라이선스로 제공하는 이유는 API 를 사용하는데 불편이 없도록 하기 위함입니다.
-
-감사합니다.
-
--------------------------------------------------------------------------------
-
 Common Input Method
 ===================
 
-CIM stands for Common Input Method.
+Cim stands for Common input method.
 
 Input methods in Linux and BSD are fragmented.
 There are many input methods in Linux and BSD, such as XIM, Gtk-IM, Qt-IM, and
 Wayland-IM.
 
-A CIM project is a project to integrate these input methods.
+Cim is software that integrates these input methods.
 
 Already, the Gtk input method and the Qt input method are plugin methods, and
 it has already been proven that there is no problem for decades when these
@@ -73,7 +20,7 @@ use such Gtk and Qt input methods.
 So common input method was designed as C API, removing dependency on Gtk from
 Gtk input method.
 
-CIM is made with C API and has no dependencies, so it can be used in various
+Cim is made with C API and has no dependencies, so it can be used in various
 computer languages and applications.
 
 
@@ -82,12 +29,12 @@ How it works
 
 cim.h contains interfaces and types.
 cim.c contains functions for applications to use input contexts.
-If necessary, we plan to separate the API required by the application and
-the API required by the input methods(IME).
+If necessary, I plan to separate the API required by the application and
+the API required by the input tools(IME).
 
 * Location of plugins
 
-Place the input method plugins implementing the CIM API as follows:
+Place the input method plugins implementing the Cim API as follows:
 
 /usr/lib/input.d/im-sample.so
 /usr/lib/input.d/im-nimf.so
@@ -108,31 +55,29 @@ fcitx, nimf, kime, uim.
 
 ln -s /usr/lib/input.d/im-sample.so ~/.config/cim.so
 
-* Ready
+* Try it
 
-Now, when an application or GUI toolkit calls the CIM Input Context API, the
-input method(IME) works through the CIM API.
-
-/usr/lib/input.d/im-sample.so
+Now, when an application or GUI toolkit calls the Cim input context API, the
+input method(/usr/lib/input.d/im-sample.so) works through the Cim API.
 
 If you want to change the input method to fcitx, you can simply reset the
 symbolic link.
 
-ln -s /usr/lib/input.d/im-fcitx.so ~/.config/cim.so
+ln -sf /usr/lib/input.d/im-fcitx.so ~/.config/cim.so
 
 In this way, XIM, GTK-IM, QT-IM, Wayland-IM, etc. can be replaced and
 integrated. However, there is a problem that input is not possible in Snap
-or Flatpak. If various applications or GUI toolkits call CIM API, the input
-problem in snap or flatpak can be easily solved by accessing
+or Flatpak. If various applications or GUI toolkits call Cim API, the input
+problem in Snap or Flatpak can be easily solved by accessing
 $HOME/.config/cim.so.
 
 
-Integration is practically possible.
-------------------------------------
+Integration is practically possible
+-----------------------------------
 
-Even if applications such as Wayland, Snapak, or Flatpak, or GUI toolkits
-such as Gtk or Qt do not adopt CIM, the input methods can actually be
-integrated if the CIM project provides various bridges.
+Even if applications such as Wayland, Snap, Flatpak, or GUI toolkits
+such as Gtk or Qt do not adopt Cim, input methods can be integrated in practice
+if various bridges that implement Cim are provided.
 
 If you use it like this, you need to set environment variables.
 
@@ -148,29 +93,42 @@ fcitx, uim, and kime via ~/.config/cim.so.
 /usr/local/lib/gtk-3.0/3.0.0/immodules/im-cim-gtk3.so
 /usr/local/lib/qt5/plugins/platforminputcontexts/libqt5im-cim.so
 /usr/local/lib/qt6/plugins/platforminputcontexts/libqt6im-cim.so
-cim-xim.so
-cim-wayland.so
+
+Since XIM and Wayland-IM require communication, a daemon is required.
+cim-xim.so, cim-wayland.so call the Cim input context API.
+
+/usr/local/bin/cimd
+  +-- cim-xim.so
+  +-- cim-wayland.so
 
 Really technically this is possible.
 However, Flatpak and Snap applications can use the input method through
 ~/.config/cim.so. If it is not possible, you will have to ask the developers of
 Flatpak and Snap.
 
-We did not suffer from input problems even in the DOS days of the 20th century,
-so why do we have to suffer from input problems in Linux and BSD
-in the cutting-edge era of the 21st century?
+
+Benefits to input tool developers
+---------------------------------
+
+Assuming that the Cim implementation includes the above plugins and daemon,
+even if the input tool(IME) developer does not implement Gtk-IM, Qt-IM, XIM and
+Wayland-IM, just implementing Cim will enable typing in Gtk-IM, Qt-IM, XIM and
+Wayland-IM applications.
+
+Assuming that you develop a new input method, it means that people can use your
+input method in all environments, such as Gtk, Qt, XIM, Wayland, and console
+environments, just by implementing Cim.
 
 
-Project adderess
-----------------
+Contact
+-------
 
-https://github.com/hodong-kim/cim
+Email:   hodong@nimfsoft.art
+Website: https://nimfsoft.art
 
 
 License
 -------
-
-0BSD
 
 Copyright (C) 2023 Hodong Kim <hodong@nimfsoft.art>
 

@@ -1,0 +1,446 @@
+#!/usr/bin/env ruby
+
+require 'optparse'
+require 'fileutils'
+
+# default variables
+version           = "2023.01.28"
+prefix            = "/usr/local"
+extra_cflags      = "-Wall -Werror"
+extra_ldflags     = "-Wl,-z,relro"
+hardening         = "-D_FORTIFY_SOURCE=2 -O1"
+debug             = ""
+libdir            = ""
+enable_gtk4       = "gtk4"
+enable_qt6        = "qt6"
+os_id             = ""
+qt5_im_module_dir = ""
+
+parser = OptionParser.new
+parser.banner = "Usage: ./configure [OPTION]..."
+
+parser.on("--help", "Show help messages") do
+  puts parser
+  exit
+end
+
+parser.on("--debug", "Enable debug options") do
+  debug="-DDEBUG -g"
+end
+
+parser.on("--disable-hardening", "Disable hardening") do
+  hardening = ""
+end
+
+parser.on("--disable-gtk4", "Disable gtk4") do
+  enable_gtk4 = ""
+end
+
+parser.on("--disable-qt6", "Disable qt6") do
+  enable_qt6 = ""
+end
+
+parser.on("--prefix=DIRECTORY", "Set DIRECTORY to prefix") do |dir|
+  prefix=dir
+end
+
+parser.on("--libdir=PATH", "Set PATH to libdir") do |path|
+  libdir=path
+end
+
+begin
+  parser.parse!
+rescue OptionParser::MissingArgument => error
+  puts error.message
+  puts parser
+end
+
+if libdir.empty?
+  libdir="#{prefix}/lib"
+end
+
+case `uname`.chomp
+when "FreeBSD"
+  pkgconfig_dir ="#{prefix}/libdata/pkgconfig"
+  intl_ldflag   ="-L#{libdir} -lintl"
+  intl_cflag    ="-I#{prefix}/include"
+  dl_ldflag     =""
+else
+  pkgconfig_dir ="#{libdir}/pkgconfig"
+  intl_ldflag   =""
+  intl_cflag    =""
+  dl_ldflag     ="-ldl"
+end
+
+extra_cflags="#{extra_cflags} #{hardening} #{debug}"
+errmsg=""
+
+# check required packages
+
+make=`which make 2> /dev/null`.chomp
+
+if make.empty?
+  make=`which bmake 2> /dev/null`.chomp
+end
+
+if make.empty?
+  errmsg += " make"
+end
+
+cc=`which clang 2> /dev/null`.chomp
+
+if cc.empty?
+  cc=`which cc 2> /dev/null`.chomp
+end
+
+if cc.empty?
+  errmsg += " cc"
+end
+
+cxx=`which clang++ 2> /dev/null`.chomp
+
+if cxx.empty?
+  cxx=`which c++ 2> /dev/null`.chomp
+end
+
+if cxx.empty?
+  errmsg += " c++"
+end
+
+# check pkg-config
+
+if `which pkg-config`.chomp.empty?
+  puts "pkg-config not found."
+  puts "FreeBSD:    pkg install pkgconf"
+  puts "Debian:     apt install pkgconf"
+  puts "Arch Linux: pacman -S pkgconf"
+  exit 1
+end
+
+if ! system("pkg-config --exists glib-2.0");          errmsg += " glib-2.0"; end
+if ! system("pkg-config --exists gio-2.0");           errmsg += " gio-2.0"; end
+if ! system("pkg-config --exists gobject-2.0");       errmsg += " gobject-2.0"; end
+if enable_gtk4 == "gtk4"
+  if ! system("pkg-config --exists gtk4"); errmsg += " gtk4"; end
+end
+if ! system("pkg-config --exists gtk+-3.0");          errmsg += " gtk+-3.0"; end
+if ! system("pkg-config --exists gtk+-2.0");          errmsg += " gtk+-2.0"; end
+if ! system("pkg-config --exists pango");             errmsg += " pango"; end
+if ! system("pkg-config --exists x11");               errmsg += " x11"; end
+if ! system("pkg-config --exists wayland-protocols"); errmsg += " wayland-protocols"; end
+if ! system("pkg-config --exists wayland-client");    errmsg += " wayland-client"; end
+if ! system("pkg-config --exists Qt5Core");     errmsg += " Qt5Core";  end
+if ! system("pkg-config --exists Qt5Gui");      errmsg += " Qt5Gui";   end
+if ! system("pkg-config --exists Qt5Widgets");  errmsg += " Qt5Widgets"; end
+
+# Lower versions of qt6 do not have .pc files.
+# Comment if you have a lower version of Qt.
+if enable_qt6 == "qt6"
+  if ! system("pkg-config --exists Qt6Core");    errmsg += " Qt6Core";    end
+  if ! system("pkg-config --exists Qt6Gui");     errmsg += " Qt6Gui";     end
+  if ! system("pkg-config --exists Qt6Widgets"); errmsg += " Qt6Widgets"; end
+end
+
+# configure for gtk
+
+if enable_gtk4 == "gtk4"
+  gtk4_libdir=`pkg-config --variable=libdir gtk4`.chomp
+end
+
+gtk3_libdir = `pkg-config --variable=libdir gtk+-3.0`.chomp
+gtk2_libdir = `pkg-config --variable=libdir gtk+-2.0`.chomp
+
+path="PATH=$PATH:#{gtk3_libdir}/libgtk-3-0:#{gtk2_libdir}/libgtk2.0-0"
+
+case `uname -m`.chomp
+  when "x86_64", "amd64", "aarch64"
+    bit = 64
+  else
+    bit = 32
+end
+
+gtk_query_immodules3=`#{path} which gtk-query-immodules-3.0 2> /dev/null`.chomp
+
+if gtk_query_immodules3.empty?
+  gtk_query_immodules3=`#{path} which gtk-query-immodules-3.0-#{bit}`.chomp
+end
+
+if gtk_query_immodules3.empty?
+  errmsg += " gtk-query-immodules-3.0"
+end
+
+gtk_query_immodules2=`#{path} which gtk-query-immodules-2.0 2> /dev/null`.chomp
+
+if gtk_query_immodules2.empty?
+  gtk_query_immodules2=`#{path} which gtk-query-immodules-2.0-#{bit}`.chomp
+end
+
+if gtk_query_immodules2.empty?
+  errmsg += " gtk-query-immodules-2.0"
+end
+
+qt5_version=`pkg-config --modversion Qt5Core`.chomp
+qt5_include_dir=`pkg-config --variable=includedir Qt5Core`.chomp
+qt5_core_private_include_path = "#{qt5_include_dir}/QtCore/#{qt5_version}"
+qt5_gui_private_include_path  = "#{qt5_include_dir}/QtGui/#{qt5_version}"
+
+if ! (File.exist?("#{qt5_gui_private_include_path}/QtGui/qpa/qplatforminputcontext.h") and
+      File.exist?("#{qt5_gui_private_include_path}/QtGui/qpa/qplatforminputcontextplugin_p.h"))
+  puts "Qt5 base private development files are not found."
+  puts "  If you use FreeBSD,  install qt5-gui"
+  puts "  If you use Debian,   install qtbase5-private-dev"
+  puts "  If you use OpenSUSE, install libQt5Gui-private-headers-devel"
+  exit 1
+end
+
+# configure for qt5
+# moc exists in qt5-buildtools on FreeBSD
+if File.executable?(`pkg-config --variable=host_bins Qt5Core`.chomp + "/moc")
+  moc_qt5 = `pkg-config --variable=host_bins Qt5Core`.chomp + "/moc"
+elsif File.executable?(`pkg-config --variable=host_bins Qt5Core`.chomp + "/moc-qt5")
+  moc_qt5 = `pkg-config --variable=host_bins Qt5Core`.chomp + "/moc-qt5"
+end
+
+if moc_qt5.nil? or moc_qt5.empty?
+  errmsg = " moc(qt5-buildtools)"
+end
+
+File.readlines("/etc/os-release").each do |line|
+  if line.start_with?("ID=")
+    os_id = line.chomp[3..-1]
+    if os_id.start_with? ("\"") and os_id.end_with?("\"")
+      os_id = os_id[1..(os_id.size - 2)]
+    end
+    break
+  end
+end
+
+qt5_libdir=`pkg-config --variable=libdir Qt5Core`.chomp
+
+if qt5_libdir.end_with? "/qt5"
+    qt5_im_module_dir = `find #{qt5_libdir} -type d -name platforminputcontexts`.chomp
+else
+  case os_id
+  # for ubuntu-21.04, debian 10.11, opensuse
+  when "debian", "ubuntu", "opensuse-tumbleweed", "opensuse-leap", "fedora"
+    qt5_im_module_dir = `find #{qt5_libdir}/qt5 -type d -name platforminputcontexts`.chomp
+  # manjaro-kde-21.2.1-220103-linux515
+  when "manjaro"
+    qt5_im_module_dir =`find #{qt5_libdir}/qt -type d -name platforminputcontexts`.chomp
+  end
+end
+
+if qt5_im_module_dir.empty?
+  puts "Can't determine Qt5 'plugins/platforminputcontexts' directory"
+  exit 1
+end
+
+# configure for qt6
+
+if enable_qt6 == "qt6"
+  # moc_qt6
+  if File.executable? "/usr/local/libexec/qt6/moc" # FreeBSD
+    moc_qt6 = "/usr/local/libexec/qt6/moc"
+  elsif File.executable? "/usr/lib/qt6/moc" # manjaro
+    moc_qt6 = "/usr/lib/qt6/moc"
+  elsif File.executable? "/usr/lib64/qt6/libexec/moc" # tumbleweed
+    moc_qt6 = "/usr/lib64/qt6/libexec/moc"
+  elsif File.executable? "/usr/lib/qt6/libexec/moc" # bookworm
+    moc_qt6 = "/usr/lib/qt6/libexec/moc"
+  else
+    puts "Can not determine moc_qt6"
+    puts "If you use opensuse, sudo zypper install qt6-base-private-devel"
+    exit 1
+  end
+
+  # qt6_cflags
+  if File.directory? "/usr/include/qt6"
+    qt6_cflags="-I/usr/include/qt6"
+  elsif File.directory? "/usr/local/include/qt6"
+    qt6_cflags="-I/usr/local/include/qt6"
+  elsif File.directory? "/usr/include/x86_64-linux-gnu/qt6" # debian bookworm
+    qt6_cflags="-I/usr/include/x86_64-linux-gnu/qt6"
+  else
+    puts "Can not determine qt6_cflags"
+    exit 1
+  end
+
+  # qt6_core_cflags
+  if File.directory? "/usr/include/qt6/QtCore"
+    qt6_core_cflags = "-I/usr/include/qt6/QtCore"
+  elsif File.directory? "/usr/local/include/qt6/QtCore"
+    qt6_core_cflags = "-I/usr/local/include/qt6/QtCore"
+  elsif File.directory? "/usr/include/x86_64-linux-gnu/qt6/QtCore"
+    qt6_core_cflags = "-I/usr/include/x86_64-linux-gnu/qt6/QtCore"
+  else
+    puts "Can not determine qt6_core_cflags"
+    exit 1
+  end
+
+  # qt6_core_libs
+  if File.exist?("/usr/lib/libQt6Core.so.6") or
+     File.exist?("/usr/local/lib/qt6/libQt6Core.so.6") or
+     File.exist?("/usr/lib64/libQt6Core.so.6") or # tumbleweed
+     File.exist?("/usr/lib/x86_64-linux-gnu/libQt6Core.so.6")
+    qt6_core_libs="-lQt6Core"
+  else
+    puts "Can not determine qt6_core_libs"
+    exit 1
+  end
+
+  # qt6_gui_cflags
+  if File.directory? "/usr/include/qt6/QtGui"
+    qt6_gui_cflags="-I/usr/include/qt6/QtGui"
+  elsif File.directory? "/usr/local/include/qt6/QtGui"
+    qt6_gui_cflags="-I/usr/local/include/qt6/QtGui"
+  elsif File.directory? "/usr/include/x86_64-linux-gnu/qt6/QtGui"
+    qt6_gui_cflags="-I/usr/include/x86_64-linux-gnu/qt6/QtGui"
+  else
+    puts "Can not determine qt6_gui_cflags"
+    exit 1
+  end
+
+  # qt6_gui_libs
+  if File.exist? "/usr/lib/libQt6Gui.so.6" or
+     File.exist? "/usr/local/lib/qt6/libQt6Gui.so.6" or
+     File.exist? "/usr/lib64/libQt6Gui.so.6" or # tumbleweed
+     File.exist? "/usr/lib/x86_64-linux-gnu/libQt6Gui.so.6" # debian bookworm
+    qt6_gui_libs="-lQt6Gui"
+  else
+    puts "Can not determine qt6_gui_libs"
+    exit 1
+  end
+
+  # qt6_widgets_libs
+  if File.exist? "/usr/lib/libQt6Widgets.so.6" or
+     File.exist? "/usr/local/lib/qt6/libQt6Widgets.so.6" or
+     File.exist? "/usr/lib64/libQt6Widgets.so.6" or # tumbleweed
+     File.exist? "/usr/lib/x86_64-linux-gnu/libQt6Widgets.so.6" # bookworm
+    qt6_widgets_libs="-lQt6Widgets"
+  else
+    puts "Can not determine qt6_widgets_libs"
+    exit 1
+  end
+
+  # qt6_core_private_include_path
+  dir = Dir.glob("/usr/include/qt6/QtCore/6.*.*").pop
+
+  if dir.nil?
+    dir = Dir.glob("/usr/include/x86_64-linux-gnu/qt6/QtCore/6.*.*").pop
+  end
+
+  if dir.nil?
+    dir = Dir.glob("/usr/local/include/qt6/QtCore/6.*.*").pop  # FreeBSD
+  end
+
+  if not dir.nil? and File.directory? dir
+    qt6_core_private_include_path = dir
+  else
+    puts "Can not determine qt6_core_private_include_path"
+    exit 1
+  end
+
+  # qt6_gui_private_include_path
+  dir = Dir.glob("/usr/include/qt6/QtGui/6.*.*").pop
+
+  if dir.nil?
+    dir = Dir.glob("/usr/include/x86_64-linux-gnu/qt6/QtGui/6.*.*").pop
+  end
+
+  if dir.nil?
+    dir = Dir.glob("/usr/local/include/qt6/QtGui/6.*.*").pop # FreeBSD
+  end
+
+  if not dir.nil? and File.directory? dir
+    qt6_gui_private_include_path = dir
+  else
+    puts "Can not determine qt6_gui_private_include_path"
+    exit 1
+  end
+
+  # qt6_im_module_dir
+  if File.directory? "/usr/lib/qt6/plugins/platforminputcontexts"
+    qt6_im_module_dir = "/usr/lib/qt6/plugins/platforminputcontexts"
+  elsif File.directory? "/usr/local/lib/qt6/plugins/platforminputcontexts" # FreeBSD
+    qt6_im_module_dir = "/usr/local/lib/qt6/plugins/platforminputcontexts"
+  elsif File.directory? "/usr/lib64/qt6/plugins/platforminputcontexts" # tumbleweed
+    qt6_im_module_dir = "/usr/lib64/qt6/plugins/platforminputcontexts"
+  elsif File.directory? "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforminputcontexts" # bookworm
+    qt6_im_module_dir = "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforminputcontexts"
+  else
+    puts "Can not determine qt6_im_module_dir"
+    exit 1
+  end
+end
+
+# print error messages
+
+if not errmsg.empty?
+  puts "Not found: #{errmsg}"
+  exit 1
+end
+
+# Before making a release, the LIBCIM_VERSION string should be modified.
+# The string is of the form X.Y.Z
+# - If interfaces have been changed or added, but binary compatibility has
+#   been preserved, change to X.Y+1.0
+# - If binary compatibility has been broken (eg removed or changed interfaces)
+#   change to X+1.0.0
+# - If the interface is the same as the previous version, change to X.Y.Z+1
+
+libcim_major = 0
+libcim_minor = 0
+libcim_micro = 0
+
+# generate config.mk
+
+File.open("config.mk", "w") do |file|
+file.puts("MAKE                     = #{make}
+CC                       = #{cc}
+CXX                      = #{cxx}
+EXTRA_CFLAGS             = #{extra_cflags}
+EXTRA_LDFLAGS            = #{extra_ldflags}
+VERSION                  = #{version}
+top_srcdir               = #{`pwd`.chomp}
+prefix                   = #{prefix}
+libdir                   = #{libdir}
+datadir                  = #{prefix}/share
+PKGCONFIG_DIR            = #{pkgconfig_dir}
+GETTEXT_PACKAGE          = cim
+CIM_LOCALE_DIR           = #{prefix}/share/locale
+ENABLE_GTK4              = #{enable_gtk4}
+ENABLE_QT6               = #{enable_qt6}
+MKDIR_P                  = mkdir -p
+LIBCIM_MAJOR             = #{libcim_major}
+LIBCIM_MINOR             = #{libcim_minor}
+LIBCIM_MICRO             = #{libcim_micro}
+LIBCIM_VERSION           = #{libcim_major}.#{libcim_minor}.#{libcim_micro}
+GTK4_LIBDIR              = #{gtk4_libdir}
+GTK3_LIBDIR              = #{gtk3_libdir}
+GTK2_LIBDIR              = #{gtk2_libdir}
+GTK_QUERY_IMMODULES3     = #{gtk_query_immodules3}
+GTK_QUERY_IMMODULES2     = #{gtk_query_immodules2}
+QT5_CORE_PRIVATE_INCLUDE_PATH = #{qt5_core_private_include_path}
+QT5_GUI_PRIVATE_INCLUDE_PATH  = #{qt5_gui_private_include_path}
+QT5_IM_MODULE_DIR        = #{qt5_im_module_dir}
+MOC_QT5                  = #{moc_qt5}
+MOC_QT6                  = #{moc_qt6}
+QT6_CFLAGS               = #{qt6_cflags}
+QT6_CORE_CFLAGS          = #{qt6_core_cflags}
+QT6_CORE_LIBS            = #{qt6_core_libs}
+QT6_GUI_CFLAGS           = #{qt6_gui_cflags}
+QT6_GUI_LIBS             = #{qt6_gui_libs}
+QT6_WIDGETS_LIBS         = #{qt6_widgets_libs}
+QT6_CORE_PRIVATE_INCLUDE_PATH = #{qt6_core_private_include_path}
+QT6_GUI_PRIVATE_INCLUDE_PATH  = #{qt6_gui_private_include_path}
+QT6_IM_MODULE_DIR        = #{qt6_im_module_dir}
+INPUT_D_DIR              = #{libdir}/input.d
+INTL_LDFLAG              = #{intl_ldflag}
+INTL_CFLAG               = #{intl_cflag}
+DL_LDFLAG                = #{dl_ldflag}")
+end
+
+puts "Generated config.mk"
+puts "----------------------------------------------------------------"
+File.readlines("config.mk").each { |line| puts line }
+puts "----------------------------------------------------------------"

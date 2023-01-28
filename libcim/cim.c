@@ -1,13 +1,13 @@
 /* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 2; tab-width: 2 -*- */
 /*
  * cim.c
- * This file is part of CIM.
+ * This file is part of Cim.
  *
- * Copyright (C) 2023 by Hodong Kim <hodong@nimfsoft.art>
+ * Copyright (C) 2023 Hodong Kim <hodong@nimfsoft.art>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted.
-
+ *
  * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
  * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
  * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
@@ -17,151 +17,43 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #include "cim.h"
-
 #include <dlfcn.h>
 #include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <pwd.h>
-#include <string.h>
 #include <stdatomic.h>
-
-/****************************************************************************/
-#include <stdarg.h>
-
-static void* c_calloc (size_t number, size_t size)
-{
-  void* mem = calloc (number, size);
-
-  if (mem)
-    return mem;
-
-  perror (__PRETTY_FUNCTION__);
-  abort ();
-}
-
-static void* c_realloc (void* ptr, size_t size)
-{
-  if (!size)
-  {
-    free (ptr);
-    return NULL;
-  }
-
-  void* mem = realloc (ptr, size);
-
-  if (mem)
-    return mem;
-
-  perror (__PRETTY_FUNCTION__);
-  abort ();
-}
-
-static char* c_str_join (const char* str, ...)
-{
-  va_list ap;
-  size_t  offset = 0;
-  char*   result = NULL;
-
-  va_start (ap, str);
-
-  for (const char* s = str; s; s = va_arg (ap, const char*))
-  {
-    size_t len = strlen (s);
-    result = c_realloc (result, offset + len + 1);
-    memcpy (result + offset, s, len);
-    offset = offset + len;
-  }
-
-  va_end (ap);
-
-  result[offset] = 0;
-
-  return result;
-}
-
-static uid_t c_get_loginuid ()
-{
-  uid_t loginuid = -1;
-
-#ifdef __linux__
-  FILE* file;
-
-  file = fopen ("/proc/self/loginuid", "rt");
-
-  if (file)
-  {
-    uid_t uid;
-
-    if (fscanf (file, "%d", &uid) > 0)
-      loginuid = uid;
-
-    fclose (file);
-  }
-#else
-  const char* name;
-
-  if ((name = getlogin ()))
-  {
-    const struct passwd* info;
-
-    if ((info = getpwnam (name)))
-      loginuid = info->pw_uid;
-  }
-#endif
-
-  if (loginuid == (uid_t) -1)
-    loginuid = getuid ();
-
-  return loginuid;
-}
-
-/* FIXME: It should be fixed so that it does not return NULL. */
-static const char* c_get_user_home_dir ()
-{
-  return getpwuid (c_get_loginuid ())->pw_dir;
-}
-
-static char* c_get_user_config_dir ()
-{
-  const char* s1;
-  const char* s2 = "/.config";
-
-  s1 = c_get_user_home_dir ();
-
-  if (!s1)
-    return NULL;
-
-  return c_str_join (s1, s2, NULL);
-}
-
-/****************************************************************************/
+#include "c-utils.h"
+#include "c-str.h"
+#include "c-mem.h"
 
 static void    *cim_plugin;
 static CimIc* (*cim_plugin_new)  ();
 static void   (*cim_plugin_free) (CimIc*);
 static atomic_uint cim_ref_count;
 
-static char* cim_get_cim_so_path ()
+/*
+ * Returns the newly allocated cim.so path string on success,
+ * or NULL on failure.
+ * Free it with free().
+ */
+char* cim_get_cim_so_path ()
 {
   char* path;
   char* conf_dir;
 
   conf_dir = c_get_user_config_dir ();
-  path     = c_str_join (conf_dir, "/cim.so", NULL);
+
+  if (!conf_dir)
+    return NULL;
+
+  path = c_str_join (conf_dir, "/cim.so", NULL);
 
   free (conf_dir);
 
   return path;
 }
 
-static void print_dlerror ()
-{
-  const char* errstr = dlerror ();
-  if (errstr)
-    fprintf (stderr, "%s\n", errstr);
-}
-
+/*
+ * Returns a newly allocated CimIc.
+ */
 CimIc* cim_ic_new ()
 {
   cim_ref_count++;
@@ -169,21 +61,21 @@ CimIc* cim_ic_new ()
   if (cim_ref_count == 1)
   {
     char* path = cim_get_cim_so_path ();
+
+    if (!path)
+      goto fail;
+
     cim_plugin = dlopen (path, RTLD_LAZY | RTLD_LOCAL);
     free (path);
 
     if (!cim_plugin)
-    {
-      print_dlerror ();
       goto fail;
-    }
 
     cim_plugin_new  = dlsym (cim_plugin, "cim_plugin_new");
     cim_plugin_free = dlsym (cim_plugin, "cim_plugin_free");
 
     if (!cim_plugin_new || !cim_plugin_free)
     {
-      print_dlerror ();
       dlclose (cim_plugin);
       cim_plugin      = NULL;
       cim_plugin_new  = NULL;
@@ -200,7 +92,7 @@ CimIc* cim_ic_new ()
 /*
  * TODO: Fallback
  * Cannot open "/home/username/.config/cim.so"
-*/
+ */
   return c_calloc (1, sizeof (CimIc));
 }
 
@@ -217,6 +109,10 @@ void cim_ic_free (CimIc* ic)
   {
     if (cim_plugin)
       dlclose (cim_plugin);
+
+    cim_plugin      = NULL;
+    cim_plugin_new  = NULL;
+    cim_plugin_free = NULL;
   }
 }
 
