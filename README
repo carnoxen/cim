@@ -112,12 +112,12 @@ Benefits to input tool developers
 
 Assuming that the Cim implementation includes the above plugins and daemon,
 even if the input tool(IME) developer does not implement Gtk-IM, Qt-IM, XIM and
-Wayland-IM, just implementing Cim will enable typing in Gtk-IM, Qt-IM, XIM and
-Wayland-IM applications.
+Wayland-IM, just implementing Cim will enable typing in Gtk, Qt, X and
+Wayland applications.
 
-Assuming that you develop a new input method, it means that people can use your
-input method in all environments, such as Gtk, Qt, XIM, Wayland, and console
-environments, just by implementing Cim.
+Assuming that you develop a new input tool(IME), it means that people can use
+your input tool(IME) in all environments, such as Gtk, Qt, XIM, Wayland, and
+console environments, just by implementing Cim.
 
 
 Contact
