@@ -23,6 +23,7 @@
 #include "c-utils.h"
 #include "c-str.h"
 #include "c-mem.h"
+#include "c-log.h"
 
 static void    *cim_plugin;
 static CimIc* (*cim_plugin_new)  ();
@@ -173,4 +174,6 @@ void cim_ic_set_callback (CimIc*    ic,
 {
   if (ic->set_callback)
     ic->set_callback (ic, type, callback, user_data);
+  else
+    c_log_critical ("set_callback() must be implemented in the IM plugin.");
 }

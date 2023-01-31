@@ -1,7 +1,8 @@
 include ../../config.mk
 
 DEPS_CFLAGS = `pkg-config --cflags Qt5Gui  Qt5Widgets`
-DEPS_LIBS   = `pkg-config --libs   Qt5Core Qt5Gui Qt5Widgets`
+DEPS_LIBS   = `pkg-config --libs   Qt5Core Qt5Gui Qt5Widgets` \
+	$(top_srcdir)/libcim/libcim.a
 
 TARGET = libqt5im-cim.so
 
@@ -17,14 +18,12 @@ CXXFLAGS = \
 	-DQT_NO_KEYWORDS \
 	-std=c++11
 
-LIBADD  = $(top_srcdir)/libcim/libcim.a
-LDFLAGS = $(DEPS_LIBS) $(LIBADD)
+LDFLAGS = $(EXTRA_LDFLAGS) -Wl,--as-needed $(DEPS_LIBS)
 
 all: $(TARGET) $(BUILT_SOURCES)
 
 $(TARGET): im-cim-qt5.o
-	$(CXX) -shared -fPIC $(EXTRA_LDFLAGS) im-cim-qt5.o \
-	  -Wl,--as-needed $(LDFLAGS) \
+	$(CXX) -shared -fPIC im-cim-qt5.o $(LDFLAGS) \
 	  -Wl,-soname -Wl,$(TARGET) \
 	  -o $(TARGET)
 

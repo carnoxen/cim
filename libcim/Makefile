@@ -24,8 +24,8 @@ H_SOURCES = cim.h \
 SOURCES   = $(H_SOURCES) $(C_SOURCES)
 
 CFLAGS    = -I. $(EXTRA_CFLAGS)
-DEPS_LIBS = $(EXTRA_LDFLAGS) -I.
-LDFLAGS   = -Wl,-z,relro -Wl,--as-needed $(DEPS_LIBS)
+DEPS_LIBS =
+LDFLAGS   = $(EXTRA_LDFLAGS) -Wl,--as-needed $(DEPS_LIBS)
 
 libcim.a: Makefile $(SOURCES) $(C_SOURCES:.c=.o)
 	$(AR) rcs libcim.a $(C_SOURCES:.c=.o)
@@ -39,7 +39,7 @@ libcim.so: Makefile $(SOURCES) $(C_SOURCES:.c=.o)
 	ln -sf libcim.so.$(LIBCIM_VERSION) libcim.so.$(LIBCIM_MAJOR).$(LIBCIM_MINOR)
 
 .SUFFIXES: .c .o
-.c.o:
+.c.o: $(SOURCES)
 	$(CC) -fPIC $(CFLAGS) -c $< -o $@
 
 install:

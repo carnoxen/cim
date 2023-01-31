@@ -213,16 +213,16 @@ static void cim_gic_set_use_preedit (GtkIMContext* context,
 
   if (use_preedit)
   {
-    cim_ic_set_callback (gic->ic, CIM_CB_PREEDIT_START,   NULL, NULL);
-    cim_ic_set_callback (gic->ic, CIM_CB_PREEDIT_END,     NULL, NULL);
-    cim_ic_set_callback (gic->ic, CIM_CB_PREEDIT_CHANGED, NULL, NULL);
-  }
-  else
-  {
     cim_ic_set_callback (gic->ic, CIM_CB_PREEDIT_START, cb_preedit_start, gic);
     cim_ic_set_callback (gic->ic, CIM_CB_PREEDIT_END, cb_preedit_end, gic);
     cim_ic_set_callback (gic->ic, CIM_CB_PREEDIT_CHANGED,
                          cb_preedit_changed, gic);
+  }
+  else
+  {
+    cim_ic_set_callback (gic->ic, CIM_CB_PREEDIT_START,   NULL, NULL);
+    cim_ic_set_callback (gic->ic, CIM_CB_PREEDIT_END,     NULL, NULL);
+    cim_ic_set_callback (gic->ic, CIM_CB_PREEDIT_CHANGED, NULL, NULL);
   }
 }
 
@@ -315,6 +315,8 @@ static void cim_gic_init (CimGic* gic)
                     G_CALLBACK (cb_preedit_start), gic);
   g_signal_connect (gic->simple, "retrieve-surrounding",
                     G_CALLBACK (cb_retrieve_surround), gic);
+
+  cim_gic_set_use_preedit ((GtkIMContext*) gic, TRUE);
 }
 
 static void cim_gic_finalize (GObject* object)

@@ -4,9 +4,12 @@ GTK3_BINARY_VERSION=`pkg-config --variable=gtk_binary_version gtk+-3.0`
 GTK2_BINARY_VERSION=`pkg-config --variable=gtk_binary_version gtk+-2.0`
 
 IM_CIM_GTK3_DEPS_CFLAGS = `pkg-config --cflags gtk+-3.0`
-IM_CIM_GTK3_DEPS_LIBS   = `pkg-config --libs   gtk+-3.0`
+IM_CIM_GTK3_DEPS_LIBS   = `pkg-config --libs   gtk+-3.0` \
+	$(top_srcdir)/libcim/libcim.a
+
 IM_CIM_GTK2_DEPS_CFLAGS = `pkg-config --cflags gtk+-2.0`
-IM_CIM_GTK2_DEPS_LIBS   = `pkg-config --libs   gtk+-2.0`
+IM_CIM_GTK2_DEPS_LIBS   = `pkg-config --libs   gtk+-2.0` \
+	$(top_srcdir)/libcim/libcim.a
 
 CFLAGS = \
 	$(EXTRA_CFLAGS) \
@@ -15,7 +18,6 @@ CFLAGS = \
 	-DCIM_LOCALE_DIR=\"$(CIM_LOCALE_DIR)\"
 
 SOURCES = im-cim-gtk.c
-LIBADD  = $(top_srcdir)/libcim/libcim.a
 
 # for gtk3
 gtk3_im_moduledir = $(GTK3_LIBDIR)/gtk-3.0/$(GTK3_BINARY_VERSION)/immodules
@@ -23,7 +25,7 @@ IM_CIM_GTK3 = im-cim-gtk3.so
 
 im_cim_gtk3_CFLAGS  = $(IM_CIM_GTK3_DEPS_CFLAGS) $(CFLAGS) \
                       -Wno-error=deprecated-declarations
-im_cim_gtk3_LDFLAGS = $(IM_CIM_GTK3_DEPS_LIBS) $(LIBADD)
+im_cim_gtk3_LDFLAGS = -Wl,--as-needed $(IM_CIM_GTK3_DEPS_LIBS)
 
 # for gtk2
 gtk2_im_moduledir = $(GTK2_LIBDIR)/gtk-2.0/$(GTK2_BINARY_VERSION)/immodules
@@ -31,19 +33,17 @@ IM_CIM_GTK2 = im-cim-gtk2.so
 
 im_cim_gtk2_CFLAGS  = $(IM_CIM_GTK2_DEPS_CFLAGS) $(CFLAGS) \
                       -Wno-error=deprecated-declarations
-im_cim_gtk2_LDFLAGS = $(IM_CIM_GTK2_DEPS_LIBS) $(LIBADD)
+im_cim_gtk2_LDFLAGS = -Wl,--as-needed $(IM_CIM_GTK2_DEPS_LIBS)
 
 all: $(IM_CIM_GTK3) $(IM_CIM_GTK2)
 
 $(IM_CIM_GTK2): im-cim-gtk2.o Makefile
-	$(CC) -shared -fPIC $(EXTRA_LDFLAGS) im-cim-gtk2.o \
-	  -Wl,--as-needed $(im_cim_gtk2_LDFLAGS) \
+	$(CC) -shared -fPIC $(EXTRA_LDFLAGS) im-cim-gtk2.o $(im_cim_gtk2_LDFLAGS) \
 	  -Wl,-soname -Wl,$(IM_CIM_GTK2) \
 	  -o $(IM_CIM_GTK2)
 
 $(IM_CIM_GTK3): im-cim-gtk3.o Makefile
-	$(CC) -shared -fPIC $(EXTRA_LDFLAGS) im-cim-gtk3.o \
-	  -Wl,--as-needed $(im_cim_gtk3_LDFLAGS) \
+	$(CC) -shared -fPIC $(EXTRA_LDFLAGS) im-cim-gtk3.o $(im_cim_gtk3_LDFLAGS) \
 	  -Wl,-soname -Wl,$(IM_CIM_GTK3) \
 	  -o $(IM_CIM_GTK3)
 

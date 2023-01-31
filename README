@@ -3,128 +3,17 @@ Common Input Method
 
 Cim stands for Common input method.
 
-Input methods in Linux and BSD are fragmented.
-There are many input methods in Linux and BSD, such as XIM, Gtk-IM, Qt-IM, and
-Wayland-IM.
+Cim is currently in development.
+API is subject to change without notice.
+Please use it for testing purposes.
 
-Cim is software that integrates these input methods.
-
-Already, the Gtk input method and the Qt input method are plugin methods, and
-it has already been proven that there is no problem for decades when these
-plugin methods are used for input.
-
-However, since the Gtk input method and Qt input method depend on Gtk and Qt,
-respectively, X-only, Java, Wayland-only, and console-only applications cannot
-use such Gtk and Qt input methods.
-
-So common input method was designed as C API, removing dependency on Gtk from
-Gtk input method.
-
-Cim is made with C API and has no dependencies, so it can be used in various
-computer languages and applications.
-
-
-How it works
-------------
-
-cim.h contains interfaces and types.
-cim.c contains functions for applications to use input contexts.
-If necessary, I plan to separate the API required by the application and
-the API required by the input tools(IME).
-
-* Location of plugins
-
-Place the input method plugins implementing the Cim API as follows:
-
-/usr/lib/input.d/im-sample.so
-/usr/lib/input.d/im-nimf.so
-/usr/lib/input.d/im-ibus.so
-/usr/lib/input.d/im-uim.so
-/usr/lib/input.d/im-fcitx.so
-/usr/lib/input.d/im-kime.so
-
-* Symbolic link location for plugins
-
-It is recommended to select input plugins via a symbolic link rather than an
-environment variable. This is because an environment variable may not be set in
-some circumstances. Also, the symbolic link type makes it easier to create
-configurators.
-
-~/.config/cim.so is a symbolic link to the input method plugin like ibus,
-fcitx, nimf, kime, uim.
-
-ln -s /usr/lib/input.d/im-sample.so ~/.config/cim.so
-
-* Try it
-
-Now, when an application or GUI toolkit calls the Cim input context API, the
-input method(/usr/lib/input.d/im-sample.so) works through the Cim API.
-
-If you want to change the input method to fcitx, you can simply reset the
-symbolic link.
-
-ln -sf /usr/lib/input.d/im-fcitx.so ~/.config/cim.so
-
-In this way, XIM, GTK-IM, QT-IM, Wayland-IM, etc. can be replaced and
-integrated. However, there is a problem that input is not possible in Snap
-or Flatpak. If various applications or GUI toolkits call Cim API, the input
-problem in Snap or Flatpak can be easily solved by accessing
-$HOME/.config/cim.so.
-
-
-Integration is practically possible
------------------------------------
-
-Even if applications such as Wayland, Snap, Flatpak, or GUI toolkits
-such as Gtk or Qt do not adopt Cim, input methods can be integrated in practice
-if various bridges that implement Cim are provided.
-
-If you use it like this, you need to set environment variables.
-
-QT_IM_MODULE="cim"
-GTK_IM_MODULE="cim"
-XMODIFIERS="@im=cim"
-
-The following plugins can call third-party input methods such as nimf, ibus,
-fcitx, uim, and kime via ~/.config/cim.so.
-
-/usr/local/lib/gtk-4.0/4.0.0/immodules/libim-cim-gtk4.so
-/usr/local/lib/gtk-2.0/2.10.0/immodules/im-cim-gtk2.so
-/usr/local/lib/gtk-3.0/3.0.0/immodules/im-cim-gtk3.so
-/usr/local/lib/qt5/plugins/platforminputcontexts/libqt5im-cim.so
-/usr/local/lib/qt6/plugins/platforminputcontexts/libqt6im-cim.so
-
-Since XIM and Wayland-IM require communication, a daemon is required.
-cim-xim.so, cim-wayland.so call the Cim input context API.
-
-/usr/local/bin/cimd
-  +-- cim-xim.so
-  +-- cim-wayland.so
-
-Really technically this is possible.
-However, Flatpak and Snap applications can use the input method through
-~/.config/cim.so. If it is not possible, you will have to ask the developers of
-Flatpak and Snap.
-
-
-Benefits to input tool developers
----------------------------------
-
-Assuming that the Cim implementation includes the above plugins and daemon,
-even if the input tool(IME) developer does not implement Gtk-IM, Qt-IM, XIM and
-Wayland-IM, just implementing Cim will enable typing in Gtk, Qt, X and
-Wayland applications.
-
-Assuming that you develop a new input tool(IME), it means that people can use
-your input tool(IME) in all environments, such as Gtk, Qt, X, Wayland, and
-console environments, just by implementing Cim.
+Visit https://nimfsoft.art/cim for more information.
 
 
 Contact
 -------
 
-Email:   hodong@nimfsoft.art
-Website: https://nimfsoft.art
+Email: hodong@nimfsoft.art
 
 
 License
